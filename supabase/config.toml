@@ -1,0 +1,10 @@
+project_id = "qlfktmiqjjssrfhjfoyp"
+
+[functions.drive-store-token]
+verify_jwt = true
+
+[functions.drive-token]
+verify_jwt = true
+
+[functions.drive-disconnect]
+verify_jwt = true
