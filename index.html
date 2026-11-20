@@ -11,25 +11,6 @@
   <link rel="stylesheet" href="java-vault.css">
 </head>
 <body>
-  <dialog class="drive-welcome-dialog" id="drive-welcome-dialog" aria-labelledby="drive-welcome-title">
-    <div class="drive-welcome-art" aria-hidden="true">
-      <span class="welcome-leaf welcome-leaf-one"></span>
-      <span class="welcome-leaf welcome-leaf-two"></span>
-      <span class="welcome-leaf welcome-leaf-three"></span>
-      <span class="welcome-leaf welcome-leaf-four"></span>
-      <span class="welcome-sun"></span>
-    </div>
-    <div class="drive-welcome-content">
-      <span class="drive-lockup"><span class="drive-lockup-icon" aria-hidden="true">↗</span> YOUR LEARNING, WITH YOU</span>
-      <h2 id="drive-welcome-title">Make space for your next idea.</h2>
-      <p id="drive-welcome-message">Sign in once to link Google Drive. Your connection is renewed securely in the background, and this device keeps a local offline copy too.</p>
-      <button class="primary-button drive-welcome-connect" id="drive-welcome-connect" type="button">Continue with Google</button>
-      <button class="text-button drive-welcome-offline" id="drive-welcome-offline" type="button">Use my saved offline copy</button>
-      <button class="text-button drive-welcome-settings" id="drive-welcome-settings" type="button">Set up Drive connection</button>
-      <p class="drive-welcome-note">Google sign-in is handled by Google. The app never asks for your password.</p>
-    </div>
-  </dialog>
-
   <div class="app-shell">
     <aside class="sidebar" aria-label="Main navigation">
       <a class="brand" href="./" aria-label="Ope' Code Vault home">
@@ -45,18 +26,17 @@
       <nav class="side-nav">
         <button class="nav-item active" type="button" data-view="overview"><span class="nav-icon" aria-hidden="true">⌂</span> Overview</button>
         <button class="nav-item" type="button" data-view="lessons"><span class="nav-icon" aria-hidden="true">▤</span> All entries <span class="nav-count" id="lesson-nav-count">0</span></button>
-        <button class="nav-item" type="button" data-view="drive-files"><span class="nav-icon" aria-hidden="true">☁</span> Drive files <span class="nav-count" id="drive-file-count">0</span></button>
         <button class="nav-item" type="button" data-view="study"><span class="nav-icon" aria-hidden="true">✎</span> Study due <span class="nav-count" id="due-nav-count">0</span></button>
         <button class="nav-item" type="button" data-view="review"><span class="nav-icon" aria-hidden="true">↻</span> Review later <span class="nav-count" id="review-nav-count">0</span></button>
       </nav>
 
       <div class="sidebar-bottom">
         <div class="local-card">
-          <span class="local-indicator" id="drive-status-indicator" aria-hidden="true"></span>
-          <div><strong id="drive-sidebar-title">Google Drive</strong><small id="drive-sidebar-status">Sign in to sync</small></div>
+          <span class="local-indicator" aria-hidden="true"></span>
+          <div><strong>Saved on this device</strong><small>Private to this browser</small></div>
         </div>
         <button class="nav-item settings-link" type="button" data-view="settings"><span class="nav-icon" aria-hidden="true">⚙</span> Settings &amp; backup</button>
-        <p class="sidebar-footnote">Drive is primary. A local copy keeps your work available offline.</p>
+        <p class="sidebar-footnote">Your entries and attachments stay in this browser on this device.</p>
       </div>
     </aside>
 
@@ -66,10 +46,6 @@
         <div class="topbar-actions">
           <label class="search-box" for="search-input"><span aria-hidden="true">⌕</span><input id="search-input" type="search" placeholder="Search entries, topics..." autocomplete="off"><kbd>⌘ K</kbd></label>
           <button class="icon-button" id="backup-button" type="button" aria-label="Open backup settings" title="Backup and settings">⇧</button>
-          <button class="drive-account-button" id="drive-account-button" type="button" aria-label="Google Drive connection status">
-            <span class="drive-status-dot" id="drive-account-dot" aria-hidden="true"></span>
-            <span id="drive-account-label">Connect Drive</span>
-          </button>
         </div>
       </header>
 
@@ -110,35 +86,10 @@
           <button class="primary-button" type="button" data-create><span aria-hidden="true">＋</span> Create your first entry</button>
         </section>
 
-        <section class="drive-files-view" id="drive-files-view" hidden>
-          <div class="drive-files-heading">
-            <div><p class="eyebrow">YOUR GOOGLE DRIVE</p><h2>Files in your vault folder</h2><p>These are the files stored in the visible Ope Code Vault folder in your Drive.</p></div>
-            <button class="secondary-button" id="drive-refresh-files" type="button">↻ Refresh files</button>
-          </div>
-          <div class="drive-files-grid" id="drive-files-grid" aria-live="polite"></div>
-          <div class="empty-state drive-files-empty" id="drive-files-empty" hidden>
-            <span class="empty-illustration" aria-hidden="true">☁</span>
-            <h2>No Drive files yet</h2>
-            <p>Your uploaded attachments will appear here after Drive sync.</p>
-          </div>
-        </section>
-
         <section class="settings-view" id="settings-view" hidden>
-          <div class="settings-card drive-settings-card">
-            <div class="settings-card-heading"><span class="settings-icon drive-icon">☁</span><div><h2>Google Drive <span class="optional-pill">PRIMARY STORAGE</span></h2><p>Connect once and keep this vault synced to a visible folder in your Drive.</p></div></div>
-            <div class="notice notice-green"><strong>Limited access by design.</strong> The app can read and manage files it creates in its “Ope Code Vault” folder. It cannot browse unrelated files in your Drive. Drive contents are downloaded only after you connect and sync.</div>
-            <div class="settings-actions">
-              <button class="primary-button" id="drive-connect-button" type="button">Connect Google Drive</button>
-              <button class="secondary-button" id="drive-sync-button" type="button" disabled>Sync now</button>
-              <button class="text-button danger-text" id="drive-disconnect-button" type="button" hidden>Disconnect</button>
-            </div>
-            <p class="settings-footnote" id="drive-status" role="status" aria-live="polite">Drive is not connected. Your local copy remains available offline.</p>
-            <p class="settings-footnote">Automatic sync starts after you connect and runs after changes while Drive is available. Google refresh tokens are encrypted in Supabase and are not saved in this browser. You can revoke access from your Google Account.</p>
-          </div>
-
           <div class="settings-card">
-            <div class="settings-card-heading"><span class="settings-icon">⌑</span><div><h2>Offline copy &amp; backups</h2><p>A local copy keeps the vault available when Drive is offline.</p></div></div>
-            <div class="notice notice-warm"><strong>Keep an independent backup.</strong> JSON backups include lesson text and code but not attached file contents. Drive attachments remain in your Google account; download important files separately if you need an extra copy.</div>
+            <div class="settings-card-heading"><span class="settings-icon">⌑</span><div><h2>On-device storage &amp; backups</h2><p>Your entries and attachments are saved in this browser on this device.</p></div></div>
+            <div class="notice notice-warm"><strong>Keep an independent backup.</strong> JSON backups include entry text and code, but not attached files. Download important attachments separately if you need extra copies.</div>
             <div class="settings-actions">
               <button class="secondary-button" id="export-button" type="button">↓ Export backup</button>
               <button class="secondary-button" id="import-button" type="button">↑ Import backup</button>
@@ -154,47 +105,10 @@
             <div class="settings-actions">
               <button class="secondary-button" id="protect-storage-button" type="button">Protect storage on this device</button>
             </div>
-            <p class="settings-footnote" id="storage-status" role="status">A local offline copy and restore points are kept in this browser. Export backups regularly.</p>
+            <p class="settings-footnote" id="storage-status" role="status">Entries and automatic restore points stay in this browser. Export backups regularly.</p>
           </div>
 
-          <div class="settings-card">
-            <div class="settings-card-heading"><span class="settings-icon ai-icon">✳</span><div><h2>AI learning coach <span class="optional-pill">OPTIONAL</span></h2><p>Get feedback on supported programming-language code and your explanation.</p></div></div>
-            <div class="notice notice-blue"><strong>Your choice, every time.</strong> Nothing is sent until you open a lesson and choose “Review with AI.” The AI provider will receive that lesson’s code and notes. AI feedback is educational guidance, not a guarantee of correctness.</div>
-            <form id="ai-settings-form" class="ai-settings-form">
-              <label>Connection
-                <select id="ai-provider">
-                  <option value="ollama">Ollama (local model)</option>
-                  <option value="compatible">OpenAI-compatible API</option>
-                </select>
-              </label>
-              <label>Endpoint
-                <input id="ai-endpoint" type="url" required spellcheck="false">
-                <small>Ollama: http://localhost:11434 · Remote APIs must use HTTPS.</small>
-              </label>
-              <label>Model name
-                <input id="ai-model" type="text" required maxlength="120" placeholder="e.g. qwen2.5-coder:7b">
-              </label>
-              <label id="ai-key-label">API key <span class="muted">(optional for compatible APIs)</span>
-                <input id="ai-key" type="password" autocomplete="off" maxlength="500" placeholder="Used for this session only">
-                <small>The key is never saved in your library or browser storage. A client-side app is not suitable for protecting paid API keys in commercial use.</small>
-              </label>
-              <div class="form-actions"><button class="primary-button" type="submit">Save AI settings</button><span class="form-feedback" id="ai-settings-feedback" role="status"></span></div>
-            </form>
-          </div>
-
-          <div class="settings-card cloud-card">
-            <div class="settings-card-heading"><span class="settings-icon">☁</span><div><h2>Supabase sync <span class="coming-pill">OPTIONAL</span></h2><p>Legacy alternative cloud sync; Google Drive is the primary cloud store.</p></div></div>
-            <p class="settings-footnote">Sign in with Google to sync your lessons with your account. Your lessons are not sent to Supabase until you choose “Sync now.”</p>
-            <div class="notice notice-warm cloud-warning"><strong>About cloud configuration.</strong> This app uses a shared Supabase project and public publishable key, so users don’t need to configure their own. These values are visible in a browser app; row-level security protects each account’s records. Never put a Supabase secret/service-role key here.</div>
-            <div class="form-actions cloud-actions">
-              <button class="secondary-button" id="cloud-sign-in-button" type="button">Continue with Google</button>
-              <button class="secondary-button" id="cloud-sync-button" type="button" disabled>Sync now</button>
-              <button class="text-button" id="cloud-sign-out-button" type="button" hidden>Sign out</button>
-              <span class="form-feedback" id="cloud-status" role="status" aria-live="polite">Cloud sync is ready. Sign in with Google to connect.</span>
-            </div>
-            <p class="settings-footnote">This is a separate, optional legacy sync path. Google Drive is the primary storage option above. Supabase sync does not upload file attachments; see <a href="./SETUP.md" target="_blank" rel="noopener">setup instructions</a>.</p>
-          </div>
-          <p class="version-note">Ope' Code Vault · Local-first · Install from your browser menu when served on localhost or HTTPS</p>
+          <p class="version-note">Ope' Code Vault · Local-only · Install from your browser menu when served on localhost or HTTPS</p>
         </section>
       </section>
     </main>
@@ -226,7 +140,7 @@
         <label class="field-label">Topics <span class="field-hint">Separate with commas — edit these any time</span><input id="lesson-topics" type="text" maxlength="240" placeholder="loops, variables, arrays"></label>
         <label class="field-label">Your comments &amp; notes<textarea id="lesson-notes" rows="3" maxlength="5000" placeholder="Add reminders, examples, or questions you want to remember..."></textarea></label>
         <label class="field-label" id="content-field">Text content <textarea id="entry-content" rows="7" maxlength="200000" placeholder="Write or paste your text..."></textarea></label>
-        <label class="field-label" id="code-field">Code <span class="required">*</span><textarea id="lesson-code" class="code-input" rows="10" maxlength="200000" spellcheck="false" placeholder="Paste code here..."></textarea><span class="field-hint">Up to 200,000 characters · saved locally first, then synced to Drive when connected</span></label>
+        <label class="field-label" id="code-field">Code <span class="required">*</span><textarea id="lesson-code" class="code-input" rows="10" maxlength="200000" spellcheck="false" placeholder="Paste code here..."></textarea><span class="field-hint">Up to 200,000 characters · saved in this browser on this device</span></label>
         <label class="field-label" id="attachment-field">Attach files, PDFs, photos, or videos
           <input id="entry-files" type="file" multiple accept="*/*">
           <span class="field-hint" id="attachment-hint">Files stay in this browser on this device. Up to 20 files, 250 MB each, and 500 MB per entry.</span>
@@ -246,12 +160,11 @@
     <div class="detail-body" id="detail-body"></div>
     <div class="detail-footer">
       <button class="text-button danger-text" id="delete-lesson-button" type="button">Delete entry</button>
-      <div><button class="secondary-button" id="review-ai-button" type="button">✳ Review with AI</button><button class="secondary-button" id="edit-lesson-button" type="button">Edit lesson details</button></div>
+      <div><button class="secondary-button" id="edit-lesson-button" type="button">Edit entry</button></div>
     </div>
   </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="vault-drive.js" defer></script>
   <script src="vault-storage.js" defer></script>
   <script src="java-vault.js" defer></script>
 </body>
