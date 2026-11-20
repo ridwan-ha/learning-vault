@@ -83,17 +83,20 @@
           <p class="eyebrow" id="empty-eyebrow">YOUR FIRST ENTRY</p>
           <h2 id="empty-title">Make room for what’s next.</h2>
           <p id="empty-message">Save your first lesson here. Add the code, a few notes, and what clicked for you.</p>
-          <button class="primary-button" type="button" data-create><span aria-hidden="true">＋</span> Create your first entry</button>
+          <div class="empty-actions">
+            <button class="primary-button" type="button" data-create><span aria-hidden="true">＋</span> Create your first entry</button>
+            <button class="secondary-button" id="empty-import-button" type="button">Load a saved backup</button>
+          </div>
         </section>
 
         <section class="settings-view" id="settings-view" hidden>
           <div class="settings-card">
             <div class="settings-card-heading"><span class="settings-icon">⌑</span><div><h2>On-device storage &amp; backups</h2><p>Your entries and attachments are saved in this browser on this device.</p></div></div>
-            <div class="notice notice-warm"><strong>Keep an independent backup.</strong> JSON backups include entry text and code, but not attached files. Download important attachments separately if you need extra copies.</div>
+            <div class="notice notice-warm"><strong>Keep an independent backup.</strong> Full ZIP backups include your entries and attached files. Save the backup in Downloads or Files so you can load it on another device.</div>
             <div class="settings-actions">
-              <button class="secondary-button" id="export-button" type="button">↓ Export backup</button>
-              <button class="secondary-button" id="import-button" type="button">↑ Import backup</button>
-              <input id="import-file" type="file" accept="application/json,.json" hidden>
+              <button class="secondary-button" id="export-button" type="button">↓ Save full backup (.zip)</button>
+              <button class="secondary-button" id="import-button" type="button">↑ Load backup from this device</button>
+              <input id="import-file" type="file" accept="application/zip,.zip,application/json,.json" hidden>
             </div>
             <div class="recovery-controls">
               <label class="field-label" for="snapshot-select">Automatic restore points
@@ -105,7 +108,7 @@
             <div class="settings-actions">
               <button class="secondary-button" id="protect-storage-button" type="button">Protect storage on this device</button>
             </div>
-            <p class="settings-footnote" id="storage-status" role="status">Entries and automatic restore points stay in this browser. Export backups regularly.</p>
+            <p class="settings-footnote" id="storage-status" role="status">Entries and automatic restore points stay in this browser. Save a full backup to transfer them between devices.</p>
           </div>
 
           <p class="version-note">Ope' Code Vault · Local-only · Install from your browser menu when served on localhost or HTTPS</p>
@@ -165,6 +168,7 @@
   </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="vault-backup.js" defer></script>
   <script src="vault-storage.js" defer></script>
   <script src="java-vault.js" defer></script>
 </body>

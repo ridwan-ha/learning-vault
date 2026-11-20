@@ -123,6 +123,7 @@ h1 { margin-bottom: 8px; font-size: clamp(25px, 3vw, 34px); font-weight: 700; le
 .empty-state h2 { margin: 0 0 8px; font-size: 18px; letter-spacing: -.5px; }
 .empty-state > p:not(.eyebrow) { max-width: 360px; margin-bottom: 19px; color: #8c9791; font-size: 11px; line-height: 1.65; }
 .empty-state .primary-button { font-size: 10px; }
+.empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 9px; }
 
 .settings-view { display: grid; gap: 15px; max-width: 840px; }
 .settings-card { padding: 21px; border: 1px solid var(--line); border-radius: 11px; background: #fff; box-shadow: var(--shadow); }
@@ -133,7 +134,7 @@ h1 { margin-bottom: 8px; font-size: clamp(25px, 3vw, 34px); font-weight: 700; le
 .notice { padding: 12px 13px; border-radius: 8px; color: #7b776d; font-size: 10px; line-height: 1.65; }
 .notice strong { color: #555b53; }
 .notice-warm { border: 1px solid #f2eadc; background: #fffbf4; }
-.settings-actions { display: flex; gap: 9px; margin-top: 14px; }
+.settings-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 14px; }
 .recovery-controls { display: flex; align-items: flex-end; gap: 9px; margin-top: 15px; }
 .recovery-controls .field-label { min-width: 0; flex: 1; }
 .recovery-controls .secondary-button { flex: 0 0 auto; }

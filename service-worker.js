@@ -1,10 +1,11 @@
 "use strict";
 
-const CACHE_NAME = "java-vault-shell-v25";
+const CACHE_NAME = "java-vault-shell-v27";
 const APP_SHELL = [
   "./index.html",
   "./java-vault.css",
   "./assets/botanical-hero.jpg",
+  "./vault-backup.js",
   "./java-vault.js",
   "./vault-storage.js",
   "./manifest.webmanifest",

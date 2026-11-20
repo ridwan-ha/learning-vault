@@ -4,6 +4,7 @@
   const STORAGE_KEY = "java-vault-library-v1";
   const BACKUP_EXPORTED_KEY = "java-vault-last-backup-export-v1";
   const MAX_BACKUP_BYTES = 5 * 1024 * 1024;
+  const MAX_ARCHIVE_MANIFEST_BYTES = 64 * 1024 * 1024;
   const MAX_LESSONS = 5000;
   const MAX_FIELD_LENGTH = 200000;
   const STATUS_LABELS = { new: "New", review: "Review later", confident: "Confident" };
@@ -225,6 +226,7 @@
       showToast(`This library has reached the ${MAX_LESSONS.toLocaleString()} lesson limit.`, true);
       return false;
     }
+    const shouldProtectStorage = state.lessons.length === 0 && lessons.length > 0;
     try {
       const currentById = new Map(state.lessons.map((lesson) => [lesson.id, lesson]));
       const removedAttachmentIds = [];
@@ -256,6 +258,7 @@
       render();
       refreshStorageStatus();
       refreshRestorePoints();
+      if (shouldProtectStorage) void ensurePersistentStorage();
       return true;
     } catch (error) {
       showToast(`Could not safely save your library: ${error.message || "browser storage is unavailable"}. Your current in-memory lesson list was not changed.`, true);
@@ -943,36 +946,79 @@
   }
 
   async function exportBackup() {
-    const codeById = await window.VaultStorage.getCodes(
-      state.lessons.filter((lesson) => lesson.entryType === "code").map((lesson) => lesson.id)
-    );
-    const backup = {
-      app: "Ope' Code Vault",
-      schemaVersion: 1,
-      exportedAt: new Date().toISOString(),
-      attachmentsExcluded: true,
-      lessons: state.lessons.map((lesson) => ({
-        ...lesson,
-        attachmentIds: [],
-        ...(lesson.entryType === "code" ? { code: codeById.get(lesson.id) || "" } : {})
-      })),
-      deletedIds: state.deletedIds
-    };
-    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `ope-code-vault-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.append(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+    const button = byId("export-button");
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = "Preparing full backup…";
     try {
-      localStorage.setItem(BACKUP_EXPORTED_KEY, new Date().toISOString());
-      showToast("Lesson backup downloaded. Attachments are stored separately; download them from each entry if you need copies.");
+      const codeById = await window.VaultStorage.getCodes(
+        state.lessons.filter((lesson) => lesson.entryType === "code").map((lesson) => lesson.id)
+      );
+      const attachments = [];
+      const archiveFiles = [];
+      let fileNumber = 0;
+      for (const lesson of state.lessons) {
+        const records = await window.VaultStorage.listAttachments(lesson.id);
+        const recordsById = new Map(records.map((record) => [record.id, record]));
+        for (const id of lesson.attachmentIds || []) {
+          const record = recordsById.get(id);
+          if (!record) throw new Error(`An attached file in "${lesson.title}" is missing from this browser's storage.`);
+          const blob = await window.VaultStorage.getAttachment(id);
+          if (blob.size !== record.size) throw new Error(`An attached file in "${lesson.title}" is incomplete.`);
+          const path = `attachments/${String(fileNumber).padStart(6, "0")}.bin`;
+          attachments.push({
+            id,
+            entryId: lesson.id,
+            name: record.name,
+            type: record.type || blob.type || "application/octet-stream",
+            size: blob.size,
+            path
+          });
+          archiveFiles.push({ name: path, blob });
+          fileNumber += 1;
+        }
+      }
+
+      const backup = {
+        app: "Ope' Code Vault",
+        archiveFormat: "ope-code-vault-full-backup",
+        schemaVersion: 1,
+        exportedAt: new Date().toISOString(),
+        attachmentsIncluded: true,
+        lessons: state.lessons.map((lesson) => ({
+          ...lesson,
+          ...(lesson.entryType === "code" ? { code: codeById.get(lesson.id) || "" } : {})
+        })),
+        deletedIds: state.deletedIds,
+        attachments
+      };
+      const manifest = new Blob([JSON.stringify(backup)], { type: "application/json" });
+      if (manifest.size > MAX_ARCHIVE_MANIFEST_BYTES) {
+        throw new Error("The backup manifest is too large to load safely on mobile or desktop browsers.");
+      }
+      const archive = await window.VaultBackup.createZip([
+        { name: "backup.json", blob: manifest },
+        ...archiveFiles
+      ]);
+      const url = URL.createObjectURL(archive);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `ope-code-vault-backup-${new Date().toISOString().slice(0, 10)}.zip`;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+      try {
+        localStorage.setItem(BACKUP_EXPORTED_KEY, new Date().toISOString());
+      } catch (error) {
+        showToast(`Full backup downloaded, but its export date could not be recorded: ${error.message}`, true);
+        return;
+      }
+      showToast(`Full backup downloaded with ${attachments.length} attached file${attachments.length === 1 ? "" : "s"}. Save it in Downloads or Files to load it on another device.`);
       refreshStorageStatus();
-    } catch (error) {
-      showToast(`Backup downloaded, but its export date could not be recorded: ${error.message}`, true);
+    } finally {
+      button.textContent = originalText;
+      button.disabled = false;
     }
   }
 
@@ -989,14 +1035,20 @@
     try {
       const snapshots = await window.VaultStorage.snapshots();
       const estimate = await window.VaultStorage.estimate();
+      const persistent = await window.VaultStorage.isPersistent();
       const mode = window.VaultStorage.mode === "indexeddb"
         ? "IndexedDB on this device (not encrypted)"
         : window.VaultStorage.mode === "localstorage" ? "Basic browser storage (automatic restore points unavailable)" : "Storage unavailable";
+      const protection = persistent === true
+        ? "Browser storage protection is on"
+        : persistent === false
+          ? "Browser storage protection is unavailable; data may be cleared automatically"
+          : "This browser does not support persistent-storage protection";
       const usage = estimate && estimate.quota ? ` · ${formatBytes(estimate.usage)} of about ${formatBytes(estimate.quota)} used` : "";
       const recovery = state.recoveryMode ? " A previous restore point is loaded read-only until you explicitly restore it or import a backup." : "";
       const lastExport = localStorage.getItem(BACKUP_EXPORTED_KEY);
       const exportStatus = lastExport ? ` · Last backup export: ${formatDateTime(lastExport)}` : " · No backup export recorded yet";
-      target.textContent = `${mode} · ${snapshots.length} automatic restore point${snapshots.length === 1 ? "" : "s"}${usage}${exportStatus}.${recovery} Export a backup for protection from device loss or browser data clearing.`;
+      target.textContent = `${mode} · ${protection} · ${snapshots.length} automatic restore point${snapshots.length === 1 ? "" : "s"}${usage}${exportStatus}.${recovery} Save a full ZIP backup for transfer or protection from browser data clearing.`;
     } catch (error) {
       target.textContent = `Storage status could not be checked: ${error.message}`;
       showToast(`Could not check automatic restore points: ${error.message}`, true);
@@ -1090,31 +1142,116 @@
     }
   }
 
+  async function ensurePersistentStorage() {
+    try {
+      const persistent = await window.VaultStorage.isPersistent();
+      if (persistent === false) await window.VaultStorage.requestPersistentStorage();
+      refreshStorageStatus();
+    } catch (error) {
+      showToast(`Could not request browser storage protection: ${error.message}`, true);
+    }
+  }
+
+  async function readBackupFile(file) {
+    const signature = new Uint8Array(await file.slice(0, 4).arrayBuffer());
+    const isZip = /\.zip$/i.test(file.name)
+      || ["application/zip", "application/x-zip-compressed"].includes(file.type)
+      || signature[0] === 0x50 && signature[1] === 0x4b && signature[2] === 0x03 && signature[3] === 0x04;
+    if (isZip) {
+      const archive = await window.VaultBackup.openZip(file);
+      const names = archive.names();
+      if (!names.includes("backup.json")) throw new Error("This ZIP does not contain an Ope' Code Vault backup.");
+      const manifestFile = await archive.get("backup.json");
+      if (!manifestFile || manifestFile.size > MAX_ARCHIVE_MANIFEST_BYTES) {
+        throw new Error("The backup manifest is too large or could not be read.");
+      }
+      const parsed = JSON.parse(await manifestFile.text());
+      if (!parsed || parsed.archiveFormat !== "ope-code-vault-full-backup" || parsed.schemaVersion !== 1
+        || parsed.attachmentsIncluded !== true || !Array.isArray(parsed.attachments)) {
+        throw new Error("This ZIP is not a supported full Ope' Code Vault backup.");
+      }
+
+      const library = parseLibrary(parsed);
+      const lessonById = new Map(library.lessons.map((lesson) => [lesson.id, lesson]));
+      const attachmentIds = new Set();
+      const attachmentCounts = new Map();
+      const attachmentSizes = new Map();
+      const addedFiles = [];
+      const expectedNames = new Set(["backup.json"]);
+      if (names.length !== parsed.attachments.length + 1) throw new Error("The backup contains unexpected files.");
+
+      for (let index = 0; index < parsed.attachments.length; index += 1) {
+        const metadata = parsed.attachments[index];
+        const path = `attachments/${String(index).padStart(6, "0")}.bin`;
+        const lesson = metadata && lessonById.get(metadata.entryId);
+        if (!metadata || typeof metadata.id !== "string" || metadata.id.length > 100
+          || typeof metadata.entryId !== "string" || typeof metadata.name !== "string" || metadata.name.length > 255
+          || typeof metadata.type !== "string" || metadata.type.length > 255
+          || !Number.isSafeInteger(metadata.size) || metadata.size < 0 || metadata.size > MAX_ATTACHMENT_FILE_BYTES
+          || metadata.path !== path || !lesson || !(lesson.attachmentIds || []).includes(metadata.id)
+          || attachmentIds.has(metadata.id)) {
+          throw new Error("The backup contains invalid attachment information.");
+        }
+        const count = (attachmentCounts.get(metadata.entryId) || 0) + 1;
+        const totalSize = (attachmentSizes.get(metadata.entryId) || 0) + metadata.size;
+        if (count > MAX_ENTRY_ATTACHMENTS || totalSize > MAX_ENTRY_ATTACHMENT_BYTES) {
+          throw new Error(`The backup exceeds the attachment limits for "${lesson.title}".`);
+        }
+        attachmentCounts.set(metadata.entryId, count);
+        attachmentSizes.set(metadata.entryId, totalSize);
+        attachmentIds.add(metadata.id);
+        expectedNames.add(path);
+        const blob = await archive.get(path);
+        if (!blob || blob.size !== metadata.size) throw new Error(`The attached file "${metadata.name}" is missing or incomplete.`);
+        addedFiles.push({
+          id: metadata.id,
+          entryId: metadata.entryId,
+          file: new File([blob], metadata.name, { type: metadata.type || "application/octet-stream" })
+        });
+      }
+
+      library.lessons.forEach((lesson) => {
+        if ((lesson.attachmentIds || []).some((id) => !attachmentIds.has(id))) {
+          throw new Error(`The backup is missing an attached file from "${lesson.title}".`);
+        }
+      });
+      if (names.some((name) => !expectedNames.has(name))) throw new Error("The backup contains unexpected files.");
+      return { parsed, library, addedFiles };
+    }
+
+    if (file.size > MAX_BACKUP_BYTES) throw new Error("This JSON backup is larger than the 5 MB import limit. Use a full ZIP backup instead.");
+    const parsed = JSON.parse(await file.text());
+    if (!parsed || parsed.schemaVersion !== 1 || !Array.isArray(parsed.lessons)) {
+      throw new Error("This file is not a supported Ope' Code Vault backup.");
+    }
+    return { parsed, library: parseLibrary(parsed), addedFiles: [] };
+  }
+
   async function importBackup(file) {
     if (!file) return;
-    if (file.size > MAX_BACKUP_BYTES) {
-      showToast("This backup is larger than the 5 MB import limit.", true);
-      return;
-    }
     try {
-      const parsed = JSON.parse(await file.text());
-      if (!parsed || parsed.schemaVersion !== 1 || !Array.isArray(parsed.lessons)) {
-        throw new Error("This file is not a supported Java Vault backup.");
-      }
-      if (parsed.lessons.length > MAX_LESSONS) throw new Error("This backup contains too many lessons.");
-      const importedLibrary = parseLibrary(parsed);
-      const imported = importedLibrary.lessons;
-      if (!window.confirm(`Import ${imported.length} lesson(s)? They will be merged into this library; matching IDs will be replaced.`)) return;
+      const { parsed, library, addedFiles } = await readBackupFile(file);
+      const currentById = new Map(state.lessons.map((lesson) => [lesson.id, lesson]));
+      const imported = library.lessons.map((lesson) => {
+        const current = currentById.get(lesson.id);
+        if (parsed.attachmentsExcluded === true && current && !lesson.attachmentIds.length) {
+          return { ...lesson, attachmentIds: current.attachmentIds };
+        }
+        return lesson;
+      });
+      const fileCount = addedFiles.length;
+      const importDescription = `Load ${imported.length} entr${imported.length === 1 ? "y" : "ies"}${fileCount ? ` and ${fileCount} attached file${fileCount === 1 ? "" : "s"}` : ""}?`;
+      if (!window.confirm(`${importDescription} They will be merged into this library; matching entries will be replaced, and existing entries not in the backup will be kept.`)) return;
       const merged = new Map(state.lessons.map((lesson) => [lesson.id, lesson]));
       imported.forEach((lesson) => merged.set(lesson.id, lesson));
-      const deletedIds = { ...state.deletedIds, ...importedLibrary.deletedIds };
+      const deletedIds = { ...state.deletedIds, ...library.deletedIds };
       imported.forEach((lesson) => {
         if (deletedIds[lesson.id] && Date.parse(lesson.updatedAt) > Date.parse(deletedIds[lesson.id])) {
           delete deletedIds[lesson.id];
         }
       });
-      if (!await persistLessons([...merged.values()].filter((lesson) => !deletedIds[lesson.id]), true, deletedIds)) return;
-      showToast(`${imported.length} lesson(s) imported.`);
+      if (!await persistLessons([...merged.values()].filter((lesson) => !deletedIds[lesson.id]), true, deletedIds, addedFiles)) return;
+      showToast(`${imported.length} entr${imported.length === 1 ? "y" : "ies"} and ${fileCount} attached file${fileCount === 1 ? "" : "s"} loaded.`);
     } catch (error) {
       showToast(`Import failed: ${error.message || "the backup could not be read"}`, true);
     } finally {
@@ -1167,6 +1304,7 @@
       }
     });
     byId("import-button").addEventListener("click", () => elements.importFile.click());
+    byId("empty-import-button").addEventListener("click", () => elements.importFile.click());
     elements.importFile.addEventListener("change", () => importBackup(elements.importFile.files[0]));
     byId("restore-snapshot-button").addEventListener("click", restoreSnapshot);
     byId("restore-legacy-button").addEventListener("click", restoreLegacyCopy);
@@ -1225,6 +1363,7 @@
     checkDueReminders();
     refreshStorageStatus();
     refreshRestorePoints();
+    if (state.lessons.length) void ensurePersistentStorage();
     window.setInterval(checkDueReminders, 30000);
     window.setInterval(() => {
       const previousDueCount = byId("due-nav-count").textContent;

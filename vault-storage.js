@@ -394,6 +394,11 @@
     return navigator.storage.persist();
   }
 
+  async function isPersistent() {
+    if (!navigator.storage || typeof navigator.storage.persisted !== "function") return null;
+    return navigator.storage.persisted();
+  }
+
   window.VaultStorage = Object.freeze({
     load,
     save,
@@ -404,6 +409,7 @@
     listAttachments,
     getAttachment,
     requestPersistentStorage,
+    isPersistent,
     estimate,
     get mode() {
       return storageMode;
