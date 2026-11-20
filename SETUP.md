@@ -22,7 +22,7 @@ Use the existing project `qlfktmiqjjssrfhjfoyp`:
 
 1. In [Google Cloud Console](https://console.cloud.google.com/), enable the **Google Drive API** and configure the OAuth consent screen. If the app is in testing mode, add the Google account as a test user. Add the Google `drive.file` scope (`https://www.googleapis.com/auth/drive.file`); this scope limits the app to files it creates rather than unrelated Drive files.
 2. Create or use a **Web application** OAuth client. Set its authorized redirect URI to `https://qlfktmiqjjssrfhjfoyp.supabase.co/auth/v1/callback`.
-3. In Supabase **Authentication → Providers → Google**, enable Google and enter that OAuth client ID and client secret. In **Authentication → URL Configuration**, allow the exact app URL `https://ridwan-ha.github.io/ha-vault/`. For local testing, also allow `http://localhost:8000/`.
+3. In Supabase **Authentication → Providers → Google**, enable Google and enter that OAuth client ID and client secret. In **Authentication → URL Configuration**, set the Site URL and allow the exact app URL `https://ridwan-ha.github.io/learning-vault/`. Drive authorization always completes on this published URL. If started from a local copy, the app first switches to the published app because Supabase PKCE requires the OAuth flow to start and finish on the same origin.
 4. Install the Supabase CLI and run these commands from the project folder:
 
    ```powershell
@@ -38,13 +38,19 @@ Use the existing project `qlfktmiqjjssrfhjfoyp`:
 
    ```powershell
    python -c "import secrets,base64; print(base64.b64encode(secrets.token_bytes(32)).decode())"
-   supabase secrets set DRIVE_CLIENT_ID="your-client-id.apps.googleusercontent.com" DRIVE_CLIENT_SECRET="your-google-client-secret" DRIVE_TOKEN_ENCRYPTION_KEY="paste-the-generated-base64-key" APP_ORIGINS="https://ridwan-ha.github.io,http://localhost:8000"
+   supabase secrets set DRIVE_CLIENT_ID="your-client-id.apps.googleusercontent.com" DRIVE_CLIENT_SECRET="your-google-client-secret" DRIVE_TOKEN_ENCRYPTION_KEY="paste-the-generated-base64-key" APP_ORIGINS="https://ridwan-ha.github.io"
    ```
 
    The `APP_ORIGINS` value should contain only origins you use. Keep the encryption key backed up securely; replacing or losing it makes existing stored tokens unreadable, so users would need to connect Drive again. Supabase supplies the project URL and API keys to Edge Functions; the functions use the publishable key only to validate the signed-in user and the server-only secret key for database access. Never put the secret/service-role key in the app.
 6. Deploy the updated static app. Choose **Connect Drive** once and approve the requested access. After that, a page reload should renew Drive access without reopening Google authorization. If consent is revoked or the refresh token becomes invalid, choose **Connect Drive** again.
 
 You can disconnect in the app to delete the encrypted refresh token from the backend. This does not revoke the Google grant itself; revoke it separately from your Google Account if desired. Google OAuth projects left in **Testing** may issue refresh tokens that expire after seven days for scopes beyond basic identity; publish the consent screen for durable use and complete any applicable verification requirements. Consent/testing and verification rules can change, so follow current Google Cloud and Supabase instructions if either reports an issue.
+
+The local development address and the published GitHub Pages URL have separate browser storage. If you have lessons saved only on localhost, export a backup there and import it on the published app before syncing.
+
+### Google says the app is not verified
+
+That warning comes from the Google OAuth consent-screen status, not from the missing per-device client-ID field or the redirect address. During testing, add your account under the consent screen's **Test users**. For general use, publish the consent screen and complete any Google verification it requires. In Google Cloud, the authorized OAuth redirect URI is the Supabase callback (`https://qlfktmiqjjssrfhjfoyp.supabase.co/auth/v1/callback`); the final return to the app is configured separately in Supabase's URL allow list. The local app switches to the published URL before starting OAuth so Supabase's PKCE flow starts and finishes on the same origin.
 
 Google Drive quota is controlled by your Google account. Personal Google accounts generally share up to 15 GB across Drive, Gmail, and Photos; see [Google's storage details](https://support.google.com/drive/answer/6374270?hl=en) for current limits. OAuth consent/testing and verification requirements can change; consult the current Google Cloud instructions if the consent screen reports an issue.
 

@@ -7,6 +7,7 @@
     projectUrl: "https://qlfktmiqjjssrfhjfoyp.supabase.co",
     publicKey: "sb_publishable_U-JTvmVNWBk-ms6GR9h1cQ_cFSWwRvc"
   });
+  const PUBLISHED_APP_URL = "https://ridwan-ha.github.io/learning-vault/";
   const CLOUD_AUTH_STORAGE_KEY = "sb-qlfktmiqjjssrfhjfoyp-auth-token";
   const DRIVE_OAUTH_INTENT_KEY = "java-vault-drive-oauth-pending-v1";
   let pendingGoogleRefreshToken = "";
@@ -100,6 +101,16 @@
     importFile: byId("import-file"),
     toast: byId("toast")
   };
+
+  function isPublishedApp() {
+    return new URL("./", window.location.href).href === PUBLISHED_APP_URL;
+  }
+
+  function redirectToPublishedApp(queryKey) {
+    const target = new URL(PUBLISHED_APP_URL);
+    target.searchParams.set(queryKey, "1");
+    window.location.assign(target.href);
+  }
 
   function makeId() {
     if (window.crypto && typeof window.crypto.randomUUID === "function") return window.crypto.randomUUID();
@@ -1240,17 +1251,20 @@
   }
 
   async function connectDrive() {
+    if (!isPublishedApp()) {
+      redirectToPublishedApp("connect-drive");
+      return;
+    }
     byId("drive-status").textContent = "Opening Google account authorization…";
     byId("drive-welcome-connect").disabled = true;
     byId("drive-connect-button").disabled = true;
     try {
       const client = await getCloudClient();
-      const redirectTo = new URL("./", window.location.href).href;
       sessionStorage.setItem(DRIVE_OAUTH_INTENT_KEY, "true");
       const { error } = await client.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo,
+          redirectTo: PUBLISHED_APP_URL,
           scopes: "openid email profile https://www.googleapis.com/auth/drive.file",
           queryParams: { access_type: "offline", prompt: "consent" }
         }
@@ -1779,6 +1793,10 @@
   }
 
   async function cloudSignIn() {
+    if (!isPublishedApp()) {
+      redirectToPublishedApp("open-cloud-settings");
+      return;
+    }
     const client = await getCloudClient();
     const { data, error: sessionError } = await client.auth.getSession();
     if (sessionError) throw new Error(`Could not check Supabase sign-in: ${sessionError.message}`);
@@ -1788,10 +1806,9 @@
       showToast("You are already signed in.");
       return;
     }
-    const redirectTo = new URL("./", window.location.href).href;
     const { error } = await client.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo, skipBrowserRedirect: false }
+      options: { redirectTo: PUBLISHED_APP_URL, skipBrowserRedirect: false }
     });
     if (error) throw new Error(`Google sign-in failed: ${error.message}`);
     byId("cloud-status").textContent = "Opening Google sign-in…";
@@ -2113,6 +2130,14 @@
   }
 
   async function initialize() {
+    const landingUrl = new URL(window.location.href);
+    const connectDriveRequested = landingUrl.searchParams.get("connect-drive") === "1";
+    const openCloudSettingsRequested = landingUrl.searchParams.get("open-cloud-settings") === "1";
+    if (connectDriveRequested || openCloudSettingsRequested) {
+      landingUrl.searchParams.delete("connect-drive");
+      landingUrl.searchParams.delete("open-cloud-settings");
+      history.replaceState(null, "", landingUrl.href);
+    }
     try {
       state.lessons = await loadLessons();
       state.storageMode = window.VaultStorage.mode;
@@ -2127,6 +2152,10 @@
     bindEvents();
     refreshDriveSettings();
     render();
+    if (connectDriveRequested) {
+      showDriveWelcome("You’re now on the published app. Continue with Google here to connect Drive.");
+    }
+    if (openCloudSettingsRequested) navigate("settings");
     registerOfflineApp();
     checkDueReminders();
     refreshStorageStatus();
